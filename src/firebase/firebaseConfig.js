@@ -10,13 +10,13 @@ import { getAnalytics } from "firebase/analytics";
 
 // Configuration Firebase de votre application
 const firebaseConfig = {
-  apiKey: "AIzaSyAlfUp28TSWr4WlyYwSBtnvpKurxwSbg74",
-  authDomain: "creatorbridge-58780.firebaseapp.com",
-  projectId: "creatorbridge-58780",
-  storageBucket: "creatorbridge-58780.firebasestorage.app",
-  messagingSenderId: "98394564557",
-  appId: "1:98394564557:web:5981e8ef79806635e58684",
-  measurementId: "G-D31V942ESG"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialisation de Firebase (avec vérification pour éviter les initialisations multiples en mode SSR)
