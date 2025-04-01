@@ -1,3 +1,5 @@
+'use client';
+
 // Import des fonctions nécessaires des SDK Firebase
 import { initializeApp, getApps } from "firebase/app";
 import { getFirestore } from "firebase/firestore";

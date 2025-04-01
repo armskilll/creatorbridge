@@ -8,6 +8,8 @@ import useAuth from '../../hooks/useAuth';
 export default function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [userType, setUserType] = useState('');
+  const [typeSelected, setTypeSelected] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
@@ -23,86 +25,139 @@ export default function LoginForm() {
     }
     
     try {
-      setError('');
       setLoading(true);
+      await login(email, password, userType);
       
-      await login(email, password);
-      
-      // Rediriger selon le type d'utilisateur
-      router.push('/community');
-    } catch (err) {
-      console.error('Erreur de connexion:', err);
-      
-      // Messages d'erreur personnalisés
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        setError('Email ou mot de passe incorrect');
-      } else if (err.code === 'auth/too-many-requests') {
-        setError('Trop de tentatives de connexion. Veuillez réessayer plus tard');
+      // Rediriger vers la page appropriée selon le type
+      if (userType === 'creator') {
+        router.push('/creator-dashboard');
       } else {
-        setError('Une erreur est survenue lors de la connexion');
+        router.push('/community');
       }
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const handleGoogleLogin = async () => {
-    try {
-      setError('');
-      setLoading(true);
-      
-      await loginWithGoogle();
-      
-      // Rediriger selon le type d'utilisateur
-      router.push('/community');
     } catch (err) {
-      console.error('Erreur de connexion avec Google:', err);
-      setError('Erreur lors de la connexion avec Google');
+      setError('Impossible de se connecter. Vérifiez vos identifiants.');
     } finally {
       setLoading(false);
     }
   };
 
+  // Connexion avec services externes
+  const handleExternalSignIn = async (provider) => {
+    try {
+      setLoading(true);
+      if (provider === 'google') {
+        await loginWithGoogle(userType);
+      }
+      
+      // Rediriger selon le type
+      if (userType === 'creator') {
+        router.push('/creator-dashboard');
+      } else {
+        router.push('/community');
+      }
+    } catch (err) {
+      setError(`Erreur de connexion avec ${provider}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Première étape : Sélection du type d'utilisateur
+  if (!typeSelected) {
+    return (
+      <div className="bg-white/10 backdrop-blur-md rounded-lg shadow-lg border border-white/20 p-6 w-full max-w-md mx-auto">
+        <h2 className="text-2xl font-bold mb-6 text-center text-white">Comment souhaitez-vous vous connecter ?</h2>
+        
+        {error && (
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded text-red-100 text-sm">
+            {error}
+          </div>
+        )}
+        
+        <div className="mb-6">
+          <p className="text-white mb-4">Choisissez votre rôle sur la plateforme :</p>
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              className="p-4 rounded-lg border-2 border-white/20 hover:border-primary hover:bg-primary/20 flex flex-col items-center justify-center transition-all"
+              onClick={() => {
+                setUserType('communauté');
+                setTypeSelected(true);
+              }}
+            >
+              <span className="text-3xl mb-2">👥</span>
+              <span className="text-white font-medium">Communauté</span>
+              <span className="text-xs text-white/70 mt-1 text-center">Découvrez et soutenez vos créateurs préférés</span>
+            </button>
+            
+            <button
+              className="p-4 rounded-lg border-2 border-white/20 hover:border-secondary hover:bg-secondary/20 flex flex-col items-center justify-center transition-all"
+              onClick={() => {
+                setUserType('creator');
+                setTypeSelected(true);
+              }}
+            >
+              <span className="text-3xl mb-2">🎨</span>
+              <span className="text-white font-medium">Créateur</span>
+              <span className="text-xs text-white/70 mt-1 text-center">Partagez votre contenu et engagez votre communauté</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Deuxième étape : Formulaire de connexion
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 w-full max-w-md mx-auto">
-      <h2 className="text-2xl font-bold mb-6 text-center">Connexion</h2>
+    <div className="bg-white/10 backdrop-blur-md rounded-lg shadow-lg border border-white/20 p-6 w-full max-w-md mx-auto">
+      <h2 className="text-2xl font-bold mb-2 text-center text-white">Connexion</h2>
+      <p className="text-center text-white/70 mb-6">
+        En tant que {userType === 'creator' ? 'créateur' : 'membre de la communauté'}
+        <button 
+          onClick={() => setTypeSelected(false)}
+          className="ml-2 text-secondary hover:underline"
+        >
+          Changer
+        </button>
+      </p>
       
       {error && (
-        <div className="bg-red-100 text-red-700 px-4 py-3 rounded-md mb-4">
+        <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded text-red-100 text-sm">
           {error}
         </div>
       )}
       
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
-          <label htmlFor="email" className="block text-gray-700 mb-2">Email</label>
+          <label htmlFor="email" className="block text-white mb-2">
+            Email
+          </label>
           <input
             type="email"
             id="email"
+            className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secondary bg-white/80"
+            required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secondary"
-            disabled={loading}
-            required
           />
         </div>
         
         <div className="mb-6">
-          <div className="flex justify-between mb-2">
-            <label htmlFor="password" className="text-gray-700">Mot de passe</label>
-            <Link href="/reset-password" className="text-secondary text-sm hover:underline">
-              Mot de passe oublié ?
-            </Link>
-          </div>
+          <label htmlFor="password" className="block text-white mb-2">
+            Mot de passe
+          </label>
           <input
             type="password"
             id="password"
+            className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secondary bg-white/80"
+            required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secondary"
-            disabled={loading}
-            required
           />
+          <div className="flex justify-end">
+            <Link href="/forgot-password" className="text-sm text-secondary hover:underline mt-1">
+              Mot de passe oublié?
+            </Link>
+          </div>
         </div>
         
         <button
@@ -110,35 +165,30 @@ export default function LoginForm() {
           className="w-full bg-secondary text-white py-2 rounded-md hover:bg-opacity-90 transition-colors mb-4"
           disabled={loading}
         >
-          {loading ? 'Connexion en cours...' : 'Se connecter'}
+          {loading ? 'Chargement...' : 'Se connecter'}
         </button>
       </form>
       
       <div className="relative flex items-center justify-center my-4">
-        <div className="border-t border-gray-300 flex-grow"></div>
-        <span className="mx-4 text-gray-500 text-sm">ou</span>
-        <div className="border-t border-gray-300 flex-grow"></div>
+        <div className="border-t border-gray-300/30 flex-grow"></div>
+        <span className="mx-4 text-gray-300 text-sm">ou</span>
+        <div className="border-t border-gray-300/30 flex-grow"></div>
       </div>
       
-      <button
-        onClick={handleGoogleLogin}
-        className="w-full flex items-center justify-center bg-white border border-gray-300 py-2 rounded-md hover:bg-gray-50 transition-colors mb-4"
-        disabled={loading}
-      >
-        <svg viewBox="0 0 24 24" className="h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg">
-          <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
-            <path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z"/>
-            <path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z"/>
-            <path fill="#FBBC05" d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.724 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.479 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.999 -25.464 56.619 L -21.484 53.529 Z"/>
-            <path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 42.369 C -8.804 40.429 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z"/>
-          </g>
-        </svg>
-        Continuer avec Google
-      </button>
+      <div className="space-y-3">
+        <button
+          type="button"
+          onClick={() => handleExternalSignIn('google')}
+          className="w-full flex items-center justify-center py-2 px-4 border border-gray-300/30 rounded-md shadow-sm bg-white/10 text-white hover:bg-white/20"
+          disabled={loading}
+        >
+          Continuer avec Google
+        </button>
+      </div>
       
-      <div className="text-center mt-4">
-        <span className="text-gray-600">Pas encore de compte ?</span>
-        <Link href="/signup" className="text-secondary ml-1 hover:underline">
+      <div className="mt-6 text-center text-sm">
+        <span className="text-gray-300">Vous n'avez pas de compte?</span>{' '}
+        <Link href="/signup" className="text-secondary hover:underline font-medium">
           S'inscrire
         </Link>
       </div>
