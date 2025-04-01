@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Fonction pour vérifier si l'utilisateur est authentifié
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Fonction pour vérifier si l'utilisateur consulte ses propres données
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Fonction pour vérifier si l'utilisateur est un créateur
+    function isCreator() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'creator';
+    }
+    
+    // Fonction pour vérifier si l'utilisateur est le créateur ciblé par une suggestion
+    function isTargetedCreator() {
+      return isAuthenticated() && 
+        request.resource.data.creatorId == request.auth.uid;
+    }
+    
+    // Collection des utilisateurs
+    match /users/{userId} {
+      // Tout le monde peut lire les profils publics des utilisateurs
+      allow read;
+      
+      // Seul l'utilisateur peut modifier son propre profil
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isOwner(userId);
+      
+      // Personne ne peut supprimer un profil
+      allow delete: if false;
+    }
+    
+    // Collection des suggestions
+    match /suggestions/{suggestionId} {
+      // Tout le monde peut lire les suggestions
+      allow read;
+      
+      // Les utilisateurs authentifiés peuvent créer des suggestions
+      allow create: if isAuthenticated() && 
+                     request.resource.data.userId == request.auth.uid &&
+                     request.resource.data.status == 'pending';
+      
+      // Le créateur ciblé par la suggestion peut la mettre à jour (approuver/rejeter)
+      allow update: if isAuthenticated() && 
+                     (resource.data.creatorId == request.auth.uid || 
+                      resource.data.userId == request.auth.uid);
+      
+      // Personne ne peut supprimer une suggestion (archivage uniquement)
+      allow delete: if false;
+    }
+    
+    // Collection des votes sur les suggestions
+    match /suggestionVotes/{voteId} {
+      // Tout le monde peut voir les votes
+      allow read;
+      
+      // Les utilisateurs authentifiés peuvent voter
+      allow create: if isAuthenticated() && 
+                     request.resource.data.userId == request.auth.uid;
+      
+      // Les utilisateurs peuvent modifier ou supprimer uniquement leurs propres votes
+      allow update, delete: if isAuthenticated() && 
+                            resource.data.userId == request.auth.uid;
+    }
+    
+    // Collection des commentaires
+    match /comments/{commentId} {
+      // Tout le monde peut lire les commentaires
+      allow read;
+      
+      // Les utilisateurs authentifiés peuvent commenter
+      allow create: if isAuthenticated() && 
+                     request.resource.data.userId == request.auth.uid;
+      
+      // Les utilisateurs peuvent modifier ou supprimer uniquement leurs propres commentaires
+      allow update, delete: if isAuthenticated() && 
+                            resource.data.userId == request.auth.uid;
+    }
+    
+    // Collection des transactions CreaCoin
+    match /creaCoinTransactions/{transactionId} {
+      // Les utilisateurs peuvent voir uniquement leurs propres transactions
+      allow read: if isAuthenticated() && 
+                   resource.data.userId == request.auth.uid;
+      
+      // Les transactions ne peuvent être créées que par le système
+      // (via des fonctions Cloud)
+      allow create, update, delete: if false;
+    }
+  }
+}
